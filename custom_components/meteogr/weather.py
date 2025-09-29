@@ -28,11 +28,21 @@ CONDITION_MAP = {
     "Light Rain": "rainy",
     "Rain": "rainy",
     "Storm": "lightning-rainy",
+    "Fog": "fog",
+    "Sleet": "snowy-rainy",
+    "Hail": "hail",
+    "Snow": "snowy",
+    "lightning": "lightning",
+    "pouring": "pouring",
     # Add other conditions as you find them
 }
 # This list determines which condition is chosen for the daily forecast.
 # The first condition in this list that appears in a day's forecast will be used.
 CONDITION_SEVERITY_ORDER = [
+    "Hail"
+    "Sleet",
+    "Snow",
+    "Fog",
     "Storm",
     "Rain",
     "Light Rain",
