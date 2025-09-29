@@ -1,0 +1,40 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Meteo.gr",
+        "description": "Please enter the City ID for the location you want to monitor.",
+        "data": {
+          "city_id": "City ID"
+        },
+        "data_description": {
+          "city_id": "Find your City ID by navigating to meteo.gr, finding your location, and copying the number from the URL. Example: `https://meteo.gr/cf-en.cfm?city_id=28`"
+        }
+      },
+      "station": {
+        "title": "Select Station",
+        "description": "Choose the live weather station you want to receive sensor data from.",
+        "data": {
+          "station_name": "Station"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect. Please check the City ID and your internet connection."
+    },
+    "abort": {
+      "already_configured": "This city and station combination is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Meteo.gr Options",
+        "description": "Configure the update interval for the Meteo.gr integration.",
+        "data": {
+          "update_interval": "Update Interval (minutes)"
+        }
+      }
+    }
+  }
+}

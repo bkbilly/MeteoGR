@@ -1,0 +1,16 @@
+{
+  "domain": "meteogr",
+  "name": "Meteo.gr",
+  "codeowners": ["@bkbilly"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/bkbilly/meteogr",
+  "integration_type": "hub",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/bkbilly/meteogr/issues",
+  "requirements": [
+    "beautifulsoup4",
+    "aiohttp"
+  ],
+  "version": "1.0.0"
+}
