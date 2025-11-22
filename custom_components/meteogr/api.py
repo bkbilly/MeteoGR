@@ -5,7 +5,7 @@ import logging
 import re
 
 import aiohttp
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,9 +29,7 @@ class MeteoGrScraper:
     async def _fetch_soup(self):
         """Fetch content and return a BeautifulSoup object."""
         try:
-            async with self.session.get(
-                self.url, headers=self.headers, timeout=15
-            ) as response:
+            async with self.session.get(self.url, headers=self.headers) as response:
                 response.raise_for_status()
                 html = await response.text()
                 return BeautifulSoup(html, "html.parser")
@@ -61,45 +59,44 @@ class MeteoGrScraper:
         station_panels = live_container.select(".nowpanel")
 
         stations_data = []
-        for name_div, panel_div in zip(
-            station_names_divs, station_panels, strict=False
-        ):
+        for name_div, panel_div in zip(station_names_divs, station_panels, strict=False):
+            if name_div is None:
+                continue
             try:
                 station_name = name_div.find(string=True, recursive=False).strip()
                 temp_tag = panel_div.select_one(".nowtemp")
                 humid_tags = panel_div.find_all("div", {"class": "humid"})
-
+                if humid_tags is None:
+                    continue
+                temperature = None
+                if temp_tag:
+                    temperature = temp_tag.get_text()
+                humidity = None
+                if len(humid_tags) > 0:
+                    if len(humid_tags[0].contents) > 1:
+                        humidity = humid_tags[0].contents[1]
+                pressure = None
+                if len(humid_tags) > 1:
+                    if len(humid_tags[1].contents) > 1:
+                        pressure = humid_tags[1].contents[1]
+                wind_kmh = None
+                if panel_div.select_one(".windnumber"):
+                    wind_kmh = panel_div.select_one(".windnumber").get_text()
+                wind_bf = None
+                if panel_div.select_one(".nowbeaufort"):
+                    wind_bf = panel_div.select_one(".nowbeaufort").get_text()
+                wind_dir = None
+                if panel_div.select_one(".winddirection"):
+                    wind_dir = panel_div.select_one(".winddirection").get_text(strip=True)
                 stations_data.append(
                     {
                         "name": station_name,
-                        "temperature": self._clean_value(
-                            temp_tag.get_text() if temp_tag else None, float
-                        ),
-                        "humidity": self._clean_value(
-                            humid_tags[0].contents[1] if len(humid_tags) > 0 else None,
-                            int,
-                        ),
-                        "pressure": self._clean_value(
-                            humid_tags[1].contents[1] if len(humid_tags) > 1 else None,
-                            float,
-                        ),
-                        "wind_kmh": self._clean_value(
-                            panel_div.select_one(".windnumber").get_text()
-                            if panel_div.select_one(".windnumber")
-                            else None,
-                            float,
-                        ),
-                        "wind_bf": self._clean_value(
-                            panel_div.select_one(".nowbeaufort").get_text()
-                            if panel_div.select_one(".nowbeaufort")
-                            else None,
-                            int,
-                        ),
-                        "wind_dir": panel_div.select_one(".winddirection").get_text(
-                            strip=True
-                        )
-                        if panel_div.select_one(".winddirection")
-                        else None,
+                        "temperature": self._clean_value(temperature, float),
+                        "humidity": self._clean_value(humidity,int),
+                        "pressure": self._clean_value(pressure, float),
+                        "wind_kmh": self._clean_value(wind_kmh, float),
+                        "wind_bf": self._clean_value(wind_bf, int),
+                        "wind_dir": wind_dir,
                     }
                 )
             except (AttributeError, IndexError) as e:
@@ -173,29 +170,31 @@ class MeteoGrScraper:
                     except:
                         continue
                     humidity_find = table.find("td", {"class": "humidity"})
-                    temperature_find_1 = table.find("td", {"class": "temperature"})
-                    temperature_find_2 = table.find("div", {"class": "tempcolorcell"})
+                    temperature_find = table.find("td", {"class": "temperature"})
                     wind_find = table.find("td", {"class": "anemosfull"})
                     prediction_find = table.find("td", {"class": "phenomeno-name"})
-                    if temperature_find_1 is not None:
-                        temperature = temperature_find_1.contents[0].strip()
-                    if temperature_find_2 is not None:
-                        temperature = temperature_find_2.contents[0].strip()
-                    if humidity_find is not None:
+                    if temperature_find is not None and len(temperature_find.contents) > 0:
+                        if isinstance(temperature_find.contents[0], NavigableString):
+                            temperature = temperature_find.contents[0].strip()
+                        if len(temperature_find.contents) > 1 and isinstance(temperature_find.contents[1], NavigableString):
+                            temperature = temperature_find.contents[1].strip()
+                    if humidity_find is not None and len(humidity_find.contents) > 0:
                         humidity = humidity_find.contents[0].strip()
                     if wind_find is not None:
-                        if wind_find.td.span is None:
-                            wind_bf = "0"
-                            wind_dir = ""
-                            wind_kmh = "0"
-                        else:
-                            wind_kmh, _ = wind_find.td.span.contents[0].strip().split()
+                        wind_bf = "0"
+                        wind_dir = ""
+                        wind_kmh = "0"
+                        if wind_find.td.span is not None:
+                            if len(wind_find.td.span.contents) > 0:
+                                wind_kmh, _ = wind_find.td.span.contents[0].strip().split()
                             wind_bf, _, wind_dir = (
                                 wind_find.td.contents[0].strip().split()
                             )
                     prediction_find = table.find("td", {"class": "phenomeno-name"})
                     if prediction_find is not None:
-                        prediction = prediction_find.contents[0].strip()
+                        prediction = ""
+                        if len(prediction_find.contents) > 0:
+                            prediction = prediction_find.contents[0].strip()
                         stations_data.append(
                             {
                                 "datetime": forecast_datetime.isoformat(),
@@ -209,62 +208,6 @@ class MeteoGrScraper:
                         )
         return stations_data
 
-    def _parse_live_stations(self, soup: BeautifulSoup):
-        """Parse live station data."""
-        live_container = soup.find("div", id="live")
-        if not live_container:
-            return []
-
-        station_names_divs = live_container.select(".nowHead2")
-        station_panels = live_container.select(".nowpanel")
-
-        stations_data = []
-        for name_div, panel_div in zip(
-            station_names_divs, station_panels, strict=False
-        ):
-            try:
-                station_name = name_div.find(string=True, recursive=False).strip()
-                temp_tag = panel_div.select_one(".nowtemp")
-                humid_tags = panel_div.find_all("div", {"class": "humid"})
-
-                stations_data.append(
-                    {
-                        "name": station_name,
-                        "temperature": self._clean_value(
-                            temp_tag.get_text() if temp_tag else None, float
-                        ),
-                        "humidity": self._clean_value(
-                            humid_tags[0].contents[1] if len(humid_tags) > 0 else None,
-                            int,
-                        ),
-                        "pressure": self._clean_value(
-                            humid_tags[1].contents[1] if len(humid_tags) > 1 else None,
-                            float,
-                        ),
-                        "wind_kmh": self._clean_value(
-                            panel_div.select_one(".windnumber").get_text()
-                            if panel_div.select_one(".windnumber")
-                            else None,
-                            float,
-                        ),
-                        "wind_bf": self._clean_value(
-                            panel_div.select_one(".nowbeaufort").get_text()
-                            if panel_div.select_one(".nowbeaufort")
-                            else None,
-                            int,
-                        ),
-                        "wind_dir": panel_div.select_one(".winddirection").get_text(
-                            strip=True
-                        )
-                        if panel_div.select_one(".winddirection")
-                        else None,
-                    }
-                )
-            except (AttributeError, IndexError) as e:
-                _LOGGER.warning("Skipping a station due to parsing error: %s", e)
-                continue
-        return stations_data
-
     async def update(self):
         """Fetch and parse all data."""
         soup = await self._fetch_soup()
@@ -273,3 +216,18 @@ class MeteoGrScraper:
             self.forecast = self._parse_forecast(soup)
             return True
         return False
+
+# if __name__ == "__main__":
+#     import asyncio
+
+#     async def main():
+#         async with aiohttp.ClientSession() as session:
+#             scraper = MeteoGrScraper(session, city_id=88)
+#             success = await scraper.update()
+#             if success:
+#                 print("Live Stations:", scraper.live_stations)
+#                 print("Forecast:", scraper.forecast)
+#             else:
+#                 print("Failed to fetch data.")
+
+#     asyncio.run(main())
