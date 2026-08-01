@@ -92,7 +92,7 @@ class MeteoGrScraper:
                     {
                         "name": station_name,
                         "temperature": self._clean_value(temperature, float),
-                        "humidity": self._clean_value(humidity,int),
+                        "humidity": self._clean_value(humidity, int),
                         "pressure": self._clean_value(pressure, float),
                         "wind_kmh": self._clean_value(wind_kmh, float),
                         "wind_bf": self._clean_value(wind_bf, int),
@@ -157,7 +157,7 @@ class MeteoGrScraper:
                     today = date.today()
                     current_year = today.year
                     forecast_year = (
-                        current_year + 1 if month < today.month else current_year
+                        current_year + 1 if month and month < today.month else current_year
                     )
 
                 if "perhour" in str(table.get("class")):
@@ -167,7 +167,7 @@ class MeteoGrScraper:
                         forecast_datetime = datetime(
                             forecast_year, month, day, hour, minute
                         )
-                    except:
+                    except Exception:
                         continue
                     humidity_find = table.find("td", {"class": "humidity"})
                     temperature_find = table.find("td", {"class": "temperature"})
@@ -180,16 +180,24 @@ class MeteoGrScraper:
                             temperature = temperature_find.contents[1].strip()
                     if humidity_find is not None and len(humidity_find.contents) > 0:
                         humidity = humidity_find.contents[0].strip()
-                    if wind_find is not None:
+                    if wind_find is not None and wind_find.td is not None:
                         wind_bf = "0"
                         wind_dir = ""
                         wind_kmh = "0"
-                        if wind_find.td.span is not None:
-                            if len(wind_find.td.span.contents) > 0:
-                                wind_kmh, _ = wind_find.td.span.contents[0].strip().split()
-                            wind_bf, _, wind_dir = (
-                                wind_find.td.contents[0].strip().split()
-                            )
+                        try:
+                            if wind_find.td.span is not None and len(wind_find.td.span.contents) > 0:
+                                parts = wind_find.td.span.contents[0].strip().split()
+                                if parts:
+                                    wind_kmh = parts[0]
+                            if len(wind_find.td.contents) > 0:
+                                wind_parts = wind_find.td.contents[0].strip().split()
+                                if len(wind_parts) >= 3:
+                                    wind_bf = wind_parts[0]
+                                    wind_dir = wind_parts[2]
+                                elif len(wind_parts) == 1:
+                                    wind_bf = wind_parts[0]
+                        except (ValueError, AttributeError, IndexError):
+                            pass
                     prediction_find = table.find("td", {"class": "phenomeno-name"})
                     if prediction_find is not None:
                         prediction = ""

@@ -21,10 +21,6 @@ from .const import (
 class MeteoGrOptionsFlowHandler(config_entries.OptionsFlow):
     """Handle an options flow for Meteo.gr."""
 
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        """Initialize options flow."""
-        self.config_entry = config_entry
-
     async def async_step_init(self, user_input=None):
         """Manage the options."""
         if user_input is not None:
@@ -39,7 +35,9 @@ class MeteoGrOptionsFlowHandler(config_entries.OptionsFlow):
             step_id="init",
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_UPDATE_INTERVAL, default=current_interval): int,
+                    vol.Required(
+                        CONF_UPDATE_INTERVAL, default=current_interval
+                    ): vol.All(int, vol.Range(min=1)),
                 }
             ),
         )
@@ -56,7 +54,7 @@ class MeteoGrConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         config_entry: config_entries.ConfigEntry,
     ) -> MeteoGrOptionsFlowHandler:
         """Get the options flow for this handler."""
-        return MeteoGrOptionsFlowHandler(config_entry)
+        return MeteoGrOptionsFlowHandler()
 
     def __init__(self) -> None:
         """Initialize the config flow."""
@@ -80,7 +78,9 @@ class MeteoGrConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="user",
-            data_schema=vol.Schema({vol.Required(CONF_CITY_ID): int}),
+            data_schema=vol.Schema(
+                {vol.Required(CONF_CITY_ID): vol.All(int, vol.Range(min=1))}
+            ),
             errors=errors,
         )
 

@@ -8,7 +8,7 @@
           "city_id": "City ID"
         },
         "data_description": {
-          "city_id": "The numeric ID from the meteo.gr URL (e.g., 12 for Athens, 1 for Thessaloniki)."
+          "city_id": "The numeric ID from the meteo.gr URL (e.g., 12 for Athens, 28 for Thessaloniki)."
         }
       },
       "station": {

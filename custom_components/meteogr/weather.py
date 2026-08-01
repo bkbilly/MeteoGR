@@ -39,7 +39,7 @@ CONDITION_MAP = {
 # This list determines which condition is chosen for the daily forecast.
 # The first condition in this list that appears in a day's forecast will be used.
 CONDITION_SEVERITY_ORDER = [
-    "Hail"
+    "Hail",
     "Sleet",
     "Snow",
     "Fog",
